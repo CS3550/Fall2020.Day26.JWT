@@ -3,8 +3,24 @@ const path = require('path');
 const app = express()
 const bcrypt = require('bcryptjs')
 const bodyParser = require('body-parser');
+const jwt = require("jsonwebtoken");
+
+
+app.use("/private/*", (req, res, next) => {
+  let token = req.query.token;
+  if (!token) return res.redirect("/error.html?error='You tried to access a protected route that you were unauthorized to access'");
+  jwt.verify(token, 'secrethere', function (err, decoded) {
+    if (err)
+      res.redirect(`/error.html?error='${err}'`)
+    console.log("Valid token " + decoded);
+    next();
+    //res.sendFile(path.join(__dirname, "/private/private.html"))
+  });
+})
 
 app.use(express.static(path.join(__dirname, "/public")))
+
+app.use('/private', express.static(path.join(__dirname, "/private")))
 
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -25,7 +41,9 @@ app.post("/login_route", (req, res) => {
     return res.redirect("/index.html?error=Invalid credentials");
   }
 
-  res.sendFile(path.join(__dirname, '/private/private.html'));
+  const token = jwt.sign(req.body.userName, "secrethere")
+  console.log(token);
+  res.redirect("/private/private.html?token=" + token);
 
 })
 
@@ -34,7 +52,7 @@ app.post("/create_route", (req, res) => {
   let userName = req.body.userName;
   let password = req.body.password;
 
-  if(credentials.find(c=>c.userName == userName)){
+  if (credentials.find(c => c.userName == userName)) {
     console.log("That username is not available");
     return res.redirect("/index.html?error=That user name is not available")
   }
